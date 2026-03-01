@@ -5,13 +5,14 @@ Este é um aplicativo profissional desenvolvido em Python para nutricionistas. E
 ## 🚀 Funcionalidades
 
 - **Cadastro de Pacientes**: Registro completo com Nome, Idade, Sexo, Peso e Altura.
-- **Cálculo Automático de IMC**: O Índice de Massa Corporal é calculado em tempo real durante o cadastro.
+- **Cálculo de IMC e Status**: O Índice de Massa Corporal é calculado automaticamente com classificação (Abaixo do peso, Peso normal, Sobrepeso, Obesidade).
+- **Visualização Tabelada**: Base de dados de pacientes exibida em formato de tabela interativa para fácil gerenciamento.
 - **Módulos Especializados**:
   - **Nutrição Clínica**: Foco em histórico de doenças, alergias e medicamentos.
   - **Nutrição Esportiva**: Foco no esporte praticado, frequência e suplementação.
   - **Nutrição Infantil**: Foco em história gestacional, amamentação e introdução alimentar.
-- **Gerenciamento de Dados**: Listagem de pacientes com opção de exclusão.
-- **Relatório Sugestivo (PDF)**: Geração de um documento profissional consolidando todas as informações coletadas para o paciente.
+- **Gerenciamento de Dados**: Listagem de pacientes com opção de exclusão por ID.
+- **Relatório Sugestivo (PDF)**: Geração de um documento profissional consolidando todas as informações coletadas para o paciente, incluindo a análise técnica de IA.
 
 ## 🛠️ Tecnologias Utilizadas
 

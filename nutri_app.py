@@ -60,6 +60,21 @@ def inicializar_banco():
     conexao.commit()
     conexao.close()
 
+def classificar_imc(imc):
+    if imc <= 0:
+        return "Não Informado"
+    if imc < 18.5:
+        return "Abaixo do peso"
+    if imc < 25:
+        return "Peso normal"
+    if imc < 30:
+        return "Sobrepeso"
+    if imc < 35:
+        return "Obesidade Grau I"
+    if imc < 40:
+        return "Obesidade Grau II"
+    return "Obesidade Grau III (Mórbida)"
+
 def salvar_paciente(nome, idade, sexo, peso, altura, imc):
     conexao = sqlite3.connect('nutricao.db')
     cursor = conexao.cursor()
@@ -122,7 +137,7 @@ def obter_dados_relatorio(id_paciente):
     conexao.close()
     return paciente, clinica, esportiva, infantil
 
-class PDF(FPDF):
+class RelatorioPDF(FPDF):
     def header(self):
         if os.path.exists("logo.png"):
             self.image("logo.png", 10, 8, 33)
@@ -132,18 +147,16 @@ class PDF(FPDF):
         self.ln(20)
 
 def gerar_pdf(paciente, dados_modulo, modulo_alvo):
-    pdf = PDF()
+    pdf = RelatorioPDF()
     pdf.add_page()
     pdf.set_font('helvetica', '', 12)
     
-    # Cabeçalho de Identificação (Visual Premium)
-    pdf.set_fill_color(0, 100, 0) # Verde Escuro
+    pdf.set_fill_color(0, 100, 0) 
     pdf.set_text_color(255, 255, 255)
     pdf.cell(0, 12, f'PARECER TÉCNICO NUTRICIONAL - DESENVOLVERDURA IA', 0, 1, 'C', 1)
     pdf.set_text_color(0, 0, 0)
     pdf.ln(5)
 
-    # Identificação do Paciente (Limpeza de Dados)
     try:
         p_peso = float(paciente.get('peso', 0)) if paciente.get('peso') else 0.0
         p_altura = float(paciente.get('altura', 0)) if paciente.get('altura') else 0.0
@@ -151,12 +164,14 @@ def gerar_pdf(paciente, dados_modulo, modulo_alvo):
     except:
         p_peso, p_altura, p_imc = 0.0, 0.0, 0.0
 
+    clas_imc = classificar_imc(p_imc)
+
     pdf.set_fill_color(235, 245, 235)
     pdf.set_font('helvetica', 'B', 12)
     pdf.cell(0, 10, f' Paciente: {paciente.get("nome", "N/A")}', 0, 1, 'L', True)
     pdf.set_font('helvetica', '', 11)
     pdf.cell(0, 8, f'  Ficha: #{paciente.get("id", "0")} | Idade: {paciente.get("idade", "0")} anos | Sexo: {paciente.get("sexo", "N/A")}', 0, 1)
-    pdf.cell(0, 8, f'  Antropometria: {p_peso}kg | {p_altura}m | IMC: {p_imc:.2f}', 0, 1)
+    pdf.cell(0, 8, f'  Antropometria: {p_peso}kg | {p_altura}m | IMC: {p_imc:.2f} ({clas_imc})', 0, 1)
     pdf.ln(5)
 
     def imprimir_relato_ia(titulo, relato, cor_box):
@@ -176,20 +191,33 @@ def gerar_pdf(paciente, dados_modulo, modulo_alvo):
         pdf.set_font('helvetica', 'B', 12)
         pdf.cell(0, 8, 'Contexto Clínico Inicial:', 0, 1)
         pdf.set_font('helvetica', '', 11)
-        pdf.multi_cell(0, 7, f"Análise das queixas de {hist}. Medicamentos em uso: {meds}. Alergias: {aler}. Foco principal: {obj}.")
+        pdf.multi_cell(0, 7, f"- Histórico: {hist}")
+        pdf.multi_cell(0, 7, f"- Medicamentos: {meds}")
+        pdf.multi_cell(0, 7, f"- Alergias/Aversões: {aler}")
+        pdf.multi_cell(0, 7, f"- Objetivo Principal: {obj}")
         pdf.ln(5)
 
-        # Brain da IA Clínica - Relato Denso
         relato_ia = f"RELATO IA: Após análise sistêmica do perfil clínico de {paciente.get('nome','o paciente')}, observamos que a queixa principal ({obj}) exige uma manobra dietoterápica focada na homeostase metabólica. "
+        
+        sugestao_alimentos = "\n💡 ESTRATÉGIA DE DISTRIBUIÇÃO ALIMENTAR:\n"
         if 'emagrec' in str(obj).lower() or 'peso' in str(obj).lower():
-            relato_ia += "Propomos uma estratégia baseada em densidade nutricional elevada com restrição energética moderada. Sugere-se a modulação da carga glicêmica das refeições para controle do eixo insulina-glucagon, priorizando fibras solúveis que auxiliam na saciedade precoce. "
-        if 'diabetes' in str(obj).lower() or 'glicose' in str(obj).lower():
-            relato_ia += "O quadro exige rigoroso monitoramento do índice glicêmico. Recomenda-se a inclusão de gorduras monoinsaturadas e proteínas em todas as janelas de carboidrato para mitigar picos pós-prandiais e proteger a função pancreática. "
+            relato_ia += "Propomos uma estratégia baseada em densidade nutricional elevada com restrição energética moderada. "
+            sugestao_alimentos += "- MANHÃ: Priorizar fibras e proteínas (Ovos, Tubérculos como raiz de mandioca ou cará) para estabilizar a saciedade precoce.\n"
+            sugestao_alimentos += "- ALMOÇO: Vegetais verde-escuros devem compor 50% do prato para controle de densidade calórica.\n"
+            sugestao_alimentos += "- JANTAR: Carboidratos de baixo índice glicêmico e proteínas leves para evitar picos de insulina noturna."
+        elif 'diabetes' in str(obj).lower() or 'glicose' in str(obj).lower() or 'fígado' in str(obj).lower():
+            relato_ia += "O quadro exige rigoroso monitoramento do índice glicêmico e suporte hepático. "
+            sugestao_alimentos += "- MANHÃ: Farelo de aveia ou sementes gordurosas (chia/linhaça) associadas a uma fonte proteica.\n"
+            sugestao_alimentos += "- TARDE: Frutas de baixo impacto (frutas vermelhas ou abacate).\n"
+            sugestao_alimentos += "- JANTAR: Proteínas brancas com legumes cozidos no vapor."
+        else:
+            sugestao_alimentos += "- DIA: Manter fracionamento regular a cada 3-4 horas.\n"
+            sugestao_alimentos += "- NOITE: Reduzir volume total da refeição para favorecer o sono reparador."
         
         calc_agua = p_peso * 35 if p_peso > 0 else 2000
-        relato_ia += f"Quanto aos medicamentos ({meds}), é vital o acompanhamento da absorção de micronutrientes, mantendo a ingestão hídrica alvo de {calc_agua:.0f}ml/dia."
+        relato_ia += f"Quanto aos medicamentos ({meds}), manter a ingestão hídrica alvo de {calc_agua:.0f}ml/dia."
         
-        imprimir_relato_ia("ANÁLISE AVANÇADA DE IA CLÍNICA", relato_ia, (230, 240, 255))
+        imprimir_relato_ia("ANÁLISE AVANÇADA DE IA CLÍNICA", relato_ia + sugestao_alimentos, (230, 240, 255))
 
     elif modulo_alvo == "Esportivo":
         esp = dados_modulo.get('esporte', '')
@@ -200,21 +228,25 @@ def gerar_pdf(paciente, dados_modulo, modulo_alvo):
         pdf.set_font('helvetica', 'B', 12)
         pdf.cell(0, 8, 'Performance e Atividade Física:', 0, 1)
         pdf.set_font('helvetica', '', 11)
-        pdf.multi_cell(0, 7, f"Atividade Principal: {esp} ({freq}). Suplementação Reportada: {sup}. Objetivo: {obj}.")
+        pdf.multi_cell(0, 7, f"- Modalidade: {esp}")
+        pdf.multi_cell(0, 7, f"- Frequência: {freq}")
+        pdf.multi_cell(0, 7, f"- Suplementos: {sup}")
+        pdf.multi_cell(0, 7, f"- Objetivo: {obj}")
         pdf.ln(5)
 
-        # Brain da IA Esportiva
         relato_ia = f"RELATO IA: Para a modalidade {esp}, identificamos uma demanda bioenergética específica. "
-        if 'hipertrofia' in str(obj).lower() or 'massa' in str(obj).lower() or 'músculo' in str(obj).lower():
-            calc_prot = p_peso * 2.2 if p_peso > 0 else 150
-            relato_ia += f"Para maximizar a hipertrofia muscular, o laudo projeta um superávit calórico progressivo. Sugere-se aporte proteico central de 2.2g/kg (aprox. {calc_prot:.1f}g/dia), fracionado para manter a síntese proteica elevada. "
-            if 'creatina' not in str(sup).lower():
-                relato_ia += "Considerando o perfil de força, a suplementação com Creatina Monoidratada (3-5g/dia) deve ser avaliada para otimizar os estoques de fosfocreatina. "
-        if 'performance' in str(obj).lower() or 'rendimento' in str(obj).lower() or 'treino' in str(obj).lower():
-            relato_ia += "A estratégia deve incluir periodização de carboidratos, ajustando o volume conforme a depleção de glicogênio nas sessões de alta intensidade."
-        relato_ia += "A recuperação tecidual será otimizada via balanço nitrogenado positivo constante."
+        sugestao_alimentos = "\n⚡ CRONOGRAMA NUTRICIONAL PARA PERFORMANCE:\n"
+        
+        if 'hipertrofia' in str(obj).lower() or 'massa' in str(obj).lower():
+            relato_ia += f"Laudo projeta um superávit calórico progressivo para hipertrofia. "
+            sugestao_alimentos += "- PRÉ-TREINO: Carboidratos complexos (Batata doce ou Aveia) 90min antes da atividade.\n"
+            sugestao_alimentos += "- PÓS-TREINO: Proteína de rápida absorção associada a carboidrato simples (Banana com Mel) para ressíntese de glicogênio.\n"
+            sugestao_alimentos += "- CEIA: Proteínas de lenta absorção (Caseína natural ou Ovos) para síntese proteica noturna."
+        else:
+            sugestao_alimentos += "- PRÉ-TREINO: Foco em hidratação e carboidratos de absorção moderada.\n"
+            sugestao_alimentos += "- PÓS-TREINO: Foco em reparação tecidual com aminoácidos essenciais."
 
-        imprimir_relato_ia("ANÁLISE DE PERFORMANCE ESPORTIVA IA", relato_ia, (230, 255, 230))
+        imprimir_relato_ia("ANÁLISE DE PERFORMANCE ESPORTIVA IA", relato_ia + sugestao_alimentos, (230, 255, 230))
 
     elif modulo_alvo == "Infantil":
         gest = dados_modulo.get('gestacao', '')
@@ -225,16 +257,19 @@ def gerar_pdf(paciente, dados_modulo, modulo_alvo):
         pdf.set_font('helvetica', 'B', 12)
         pdf.cell(0, 8, 'Desenvolvimento Pediátrico:', 0, 1)
         pdf.set_font('helvetica', '', 11)
-        pdf.multi_cell(0, 7, f"Contexto: {gest}. Amamentação: {amam}. Introdução Alimentar: {intr}. Objetivo: {obj}.")
+        pdf.multi_cell(0, 7, f"- Gestação/Nascimento: {gest}")
+        pdf.multi_cell(0, 7, f"- Amamentação: {amam}")
+        pdf.multi_cell(0, 7, f"- Introdução Alimentar: {intr}")
+        pdf.multi_cell(0, 7, f"- Objetivo: {obj}")
         pdf.ln(5)
 
-        # Brain da IA Infantil
-        relato_ia = f"RELATO IA: A janela de desenvolvimento pediátrico para {paciente.get('nome','a criança')} exige atenção à plasticidade sensorial. "
-        if 'introdução' in str(intr).lower() or 'comer' in str(obj).lower():
-            relato_ia += "Sugerimos a técnica de exposição repetida e variada a alimentos 'in natura'. O foco deve ser a exploração de texturas, cores e sabores para consolidar um paladar saudável e prevenir a neofobia alimentar. "
-        relato_ia += "Deve-se garantir o aporte de ácidos graxos essenciais (ômega-3) e ferro heme, fundamentais para a mielinização neural e desenvolvimento cognitivo. A amamentação deve ser incentivada conforme a diretriz vigente."
+        relato_ia = f"RELATO IA: A janela de desenvolvimento pediátrico exige atenção à plasticidade sensorial. "
+        sugestao_alimentos = "\n👶 GUIA ALIMENTAR PEDIÁTRICO:\n"
+        sugestao_alimentos += "- MANHÃ/TARDE: Iniciar com frutas in natura cortadas para exploração sensorial.\n"
+        sugestao_alimentos += "- PRINCIPAIS: Proteína amassada ou desfiada associada a uma leguminosa e um tubérculo.\n"
+        sugestao_alimentos += "- CRÍTICO: Evitar ultraprocessados e açúcares adicionados nesta janela de formação do paladar."
 
-        imprimir_relato_ia("PARECER PEDIÁTRICO DE IA", relato_ia, (255, 240, 240))
+        imprimir_relato_ia("PARECER PEDIÁTRICO DE IA", relato_ia + sugestao_alimentos, (255, 240, 240))
 
     return bytes(pdf.output())
 
@@ -256,7 +291,7 @@ def remover_duplicatas():
     conexao.close()
     return removidos
 
-def main():
+def executar_principal():
     st.set_page_config(page_title="Desenvolverdura Pro", page_icon="🥗", layout="wide")
     inicializar_banco()
     
@@ -326,16 +361,34 @@ def main():
         
         pacientes = listar_pacientes()
         if not pacientes.empty:
-            for _, row in pacientes.iterrows():
-                with st.container(border=True):
-                    c1, c2 = st.columns([4, 1])
-                    c1.subheader(f"{row['nome']}")
-                    c1.write(f"ID: {row['id']} | Idade: {row['idade']} | IMC: {row['imc']:.2f}")
-                                            
-                    if c2.button(f"🗑️ Excluir", key=f"excluir_{row['id']}"):
-                        excluir_paciente(row['id'])
-                        st.warning("Registro removido.")
-                        st.rerun()
+            pacientes['Classificação'] = pacientes['imc'].apply(classificar_imc)
+            pacientes_exibicao = pacientes.rename(columns={
+                'id': 'ID',
+                'nome': 'Nome',
+                'idade': 'Idade',
+                'sexo': 'Sexo',
+                'peso': 'Peso',
+                'altura': 'Altura',
+                'imc': 'IMC',
+                'Classificação': 'Status IMC'
+            })
+            
+            st.dataframe(
+                pacientes_exibicao[['ID', 'Nome', 'Idade', 'Sexo', 'Peso', 'Altura', 'IMC', 'Status IMC']], 
+                hide_index=True, 
+                use_container_width=True
+            )
+            
+            st.divider()
+            st.subheader("Gerenciar Registros")
+            id_para_excluir = st.number_input("Digite o ID para excluir", min_value=0, step=1)
+            if st.button("🗑️ Confirmar Exclusão Permanente"):
+                if id_para_excluir in pacientes['id'].values:
+                    excluir_paciente(id_para_excluir)
+                    st.warning(f"Paciente #{id_para_excluir} foi removido do sistema.")
+                    st.rerun()
+                else:
+                    st.error("ID não localizado na base de dados.")
         else:
             st.info("Nenhum registro encontrado no sistema.")
 
@@ -371,7 +424,6 @@ def main():
                         st.success("Dados salvos e sincronizados!")
                         st.rerun()
                     
-                    # Relatório IA em Tempo Real
                     try:
                         paciente_dict = p_atual.to_dict('records')[0]
                         pdf_bytes = gerar_pdf(paciente_dict, dados_form, "Clínico")
@@ -399,7 +451,6 @@ def main():
                         st.success("Performance gravada!")
                         st.rerun()
                     
-                    # Relatório IA em Tempo Real
                     try:
                         paciente_dict = p_atual.to_dict('records')[0]
                         pdf_bytes = gerar_pdf(paciente_dict, dados_form, "Esportivo")
@@ -427,7 +478,6 @@ def main():
                         st.success("Dados infantis salvos!")
                         st.rerun()
                     
-                    # Relatório IA em Tempo Real
                     try:
                         paciente_dict = p_atual.to_dict('records')[0]
                         pdf_bytes = gerar_pdf(paciente_dict, dados_form, "Infantil")
@@ -436,4 +486,4 @@ def main():
                         st.error(f"Erro ao preparar laudo: {e}")
 
 if __name__ == "__main__":
-    main()
+    executar_principal()
