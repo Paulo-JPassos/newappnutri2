@@ -115,7 +115,7 @@ def excluir_paciente(id_paciente):
 
 def obter_dados_relatorio(id_paciente):
     conexao = sqlite3.connect('nutricao.db')
-    paciente = pd.read_sql_query(f'SELECT * FROM pacientes WHERE id = {id_paciente}', conexao).iloc[0]
+    paciente = pd.read_sql_query(f'SELECT * FROM pacientes WHERE id = {id_paciente}', conexao)
     clinica = pd.read_sql_query(f'SELECT * FROM clinica WHERE paciente_id = {id_paciente}', conexao)
     esportiva = pd.read_sql_query(f'SELECT * FROM esportiva WHERE paciente_id = {id_paciente}', conexao)
     infantil = pd.read_sql_query(f'SELECT * FROM infantil WHERE paciente_id = {id_paciente}', conexao)
@@ -131,107 +131,110 @@ class PDF(FPDF):
         self.cell(30, 10, 'Relatório Nutricional', 0, 1, 'C')
         self.ln(20)
 
-def gerar_pdf(paciente, clinica, esportiva, infantil):
+def gerar_pdf(paciente, dados_modulo, modulo_alvo):
     pdf = PDF()
     pdf.add_page()
     pdf.set_font('helvetica', '', 12)
     
-    pdf.set_fill_color(220, 235, 255)
-    pdf.cell(0, 10, 'Dados Básicos do Paciente', 0, 1, 'L', 1)
-    pdf.cell(0, 10, f'Nome: {paciente["nome"]}', 0, 1)
-    pdf.cell(0, 10, f'Idade: {paciente["idade"]} anos | Sexo: {paciente["sexo"]}', 0, 1)
-    pdf.cell(0, 10, f'Peso: {paciente["peso"]}kg | Altura: {paciente["altura"]}m', 0, 1)
-    pdf.cell(0, 10, f'IMC: {paciente["imc"]:.2f}', 0, 1)
+    # Cabeçalho de Identificação (Visual Premium)
+    pdf.set_fill_color(0, 100, 0) # Verde Escuro
+    pdf.set_text_color(255, 255, 255)
+    pdf.cell(0, 12, f'PARECER TÉCNICO NUTRICIONAL - DESENVOLVERDURA IA', 0, 1, 'C', 1)
+    pdf.set_text_color(0, 0, 0)
     pdf.ln(5)
 
-    sugestoes = []
-    
-    if not clinica.empty:
-        pdf.set_fill_color(240, 240, 240)
-        pdf.cell(0, 10, 'Avaliação Clínica', 0, 1, 'L', 1)
-        pdf.multi_cell(0, 10, f'Histórico: {clinica.iloc[0]["historico_doencas"]}')
-        pdf.multi_cell(0, 10, f'Alergias: {clinica.iloc[0]["alergias"]}')
-        pdf.multi_cell(0, 10, f'Medicamentos: {clinica.iloc[0]["medicamentos"]}')
-        pdf.multi_cell(0, 10, f'Objetivo: {clinica.iloc[0]["objetivo_clinico"]}')
-        
-        # IA Clínica
-        sug_cli = []
-        obj = str(clinica.iloc[0]["objetivo_clinico"]).lower()
-        hist = str(clinica.iloc[0]["historico_doencas"]).lower()
-        
-        if 'emagrec' in obj or 'perder' in obj or 'peso' in obj:
-            sug_cli.append("- [IA Clínica] Foco em déficit calórico e saciedade via fibras.")
-        elif 'diabetes' in obj or 'glicose' in obj:
-            sug_cli.append("- [IA Clínica] Controle de carga glicêmica em todas as refeições.")
-        else:
-            sug_cli.append("- [IA Clínica] Manter constância no plano alimentar para equilíbrio metabólico.")
-            
-        if 'cansaço' in hist or 'fadiga' in hist:
-            sug_cli.append("- [IA Clínica] Avaliar deficiência de B12/Ferro e aporte hídrico.")
-        
+    # Identificação do Paciente (Limpeza de Dados)
+    try:
+        p_peso = float(paciente.get('peso', 0)) if paciente.get('peso') else 0.0
+        p_altura = float(paciente.get('altura', 0)) if paciente.get('altura') else 0.0
+        p_imc = float(paciente.get('imc', 0)) if paciente.get('imc') else 0.0
+    except:
+        p_peso, p_altura, p_imc = 0.0, 0.0, 0.0
+
+    pdf.set_fill_color(235, 245, 235)
+    pdf.set_font('helvetica', 'B', 12)
+    pdf.cell(0, 10, f' Paciente: {paciente.get("nome", "N/A")}', 0, 1, 'L', True)
+    pdf.set_font('helvetica', '', 11)
+    pdf.cell(0, 8, f'  Ficha: #{paciente.get("id", "0")} | Idade: {paciente.get("idade", "0")} anos | Sexo: {paciente.get("sexo", "N/A")}', 0, 1)
+    pdf.cell(0, 8, f'  Antropometria: {p_peso}kg | {p_altura}m | IMC: {p_imc:.2f}', 0, 1)
+    pdf.ln(5)
+
+    def imprimir_relato_ia(titulo, relato, cor_box):
+        pdf.set_fill_color(*cor_box)
+        pdf.set_font('helvetica', 'B', 11)
+        pdf.cell(0, 10, f' {titulo}', 0, 1, 'L', True)
         pdf.set_font('helvetica', 'I', 10)
-        pdf.set_text_color(40, 40, 150)
-        for s in sug_cli:
-            pdf.multi_cell(0, 7, s)
-        pdf.set_text_color(0, 0, 0)
-        pdf.set_font('helvetica', '', 12)
+        pdf.multi_cell(0, 7, relato)
+        pdf.ln(10)
+
+    if modulo_alvo == "Clínico":
+        hist = dados_modulo.get('historico', '')
+        aler = dados_modulo.get('alergias', '')
+        meds = dados_modulo.get('medicamentos', '')
+        obj = dados_modulo.get('objetivo', '')
+
+        pdf.set_font('helvetica', 'B', 12)
+        pdf.cell(0, 8, 'Contexto Clínico Inicial:', 0, 1)
+        pdf.set_font('helvetica', '', 11)
+        pdf.multi_cell(0, 7, f"Análise das queixas de {hist}. Medicamentos em uso: {meds}. Alergias: {aler}. Foco principal: {obj}.")
         pdf.ln(5)
 
-    if not esportiva.empty:
-        pdf.set_fill_color(240, 240, 240)
-        pdf.cell(0, 10, 'Avaliação Esportiva', 0, 1, 'L', 1)
-        pdf.multi_cell(0, 10, f'Atividade: {esportiva.iloc[0]["esporte"]} ({esportiva.iloc[0]["frequencia"]})')
-        pdf.multi_cell(0, 10, f'Suplementação: {esportiva.iloc[0]["suplementos"]}')
-        pdf.multi_cell(0, 10, f'Objetivo: {esportiva.iloc[0]["objetivo_esportivo"]}')
+        # Brain da IA Clínica - Relato Denso
+        relato_ia = f"RELATO IA: Após análise sistêmica do perfil clínico de {paciente.get('nome','o paciente')}, observamos que a queixa principal ({obj}) exige uma manobra dietoterápica focada na homeostase metabólica. "
+        if 'emagrec' in str(obj).lower() or 'peso' in str(obj).lower():
+            relato_ia += "Propomos uma estratégia baseada em densidade nutricional elevada com restrição energética moderada. Sugere-se a modulação da carga glicêmica das refeições para controle do eixo insulina-glucagon, priorizando fibras solúveis que auxiliam na saciedade precoce. "
+        if 'diabetes' in str(obj).lower() or 'glicose' in str(obj).lower():
+            relato_ia += "O quadro exige rigoroso monitoramento do índice glicêmico. Recomenda-se a inclusão de gorduras monoinsaturadas e proteínas em todas as janelas de carboidrato para mitigar picos pós-prandiais e proteger a função pancreática. "
         
-        # IA Esportiva
-        sug_esp = []
-        obj_e = str(esportiva.iloc[0]["objetivo_esportivo"]).lower()
-        sup = str(esportiva.iloc[0]["suplementos"]).lower()
+        calc_agua = p_peso * 35 if p_peso > 0 else 2000
+        relato_ia += f"Quanto aos medicamentos ({meds}), é vital o acompanhamento da absorção de micronutrientes, mantendo a ingestão hídrica alvo de {calc_agua:.0f}ml/dia."
         
-        if 'hipertrofia' in obj_e or 'massa' in obj_e or 'músculo' in obj_e:
-            sug_esp.append("- [IA Esportiva] Proteína ideal: 2.0-2.2g/kg distribuída em 4-5 doses.")
-            if 'creatina' not in sup:
-                sug_esp.append("- [IA Esportiva] Info: Avaliar introdução de Creatina para performance.")
-        elif 'performance' in obj_e or 'rendimento' in obj_e or 'treino' in obj_e:
-            sug_esp.append("- [IA Esportiva] Periodização de carboidratos conforme carga de treino.")
-        else:
-            sug_esp.append("- [IA Esportiva] Ajustar aporte energético para suprir a demanda da atividade física.")
-            
-        pdf.set_font('helvetica', 'I', 10)
-        pdf.set_text_color(40, 110, 40)
-        for s in sug_esp:
-            pdf.multi_cell(0, 7, s)
-        pdf.set_text_color(0, 0, 0)
-        pdf.set_font('helvetica', '', 12)
+        imprimir_relato_ia("ANÁLISE AVANÇADA DE IA CLÍNICA", relato_ia, (230, 240, 255))
+
+    elif modulo_alvo == "Esportivo":
+        esp = dados_modulo.get('esporte', '')
+        freq = dados_modulo.get('frequencia', '')
+        sup = dados_modulo.get('suplementos', '')
+        obj = dados_modulo.get('objetivo', '')
+
+        pdf.set_font('helvetica', 'B', 12)
+        pdf.cell(0, 8, 'Performance e Atividade Física:', 0, 1)
+        pdf.set_font('helvetica', '', 11)
+        pdf.multi_cell(0, 7, f"Atividade Principal: {esp} ({freq}). Suplementação Reportada: {sup}. Objetivo: {obj}.")
         pdf.ln(5)
 
-    if not infantil.empty:
-        pdf.set_fill_color(240, 240, 240)
-        pdf.cell(0, 10, 'Avaliação Infantil', 0, 1, 'L', 1)
-        pdf.multi_cell(0, 10, f'Gestação: {infantil.iloc[0]["idade_gestacional"]}')
-        pdf.multi_cell(0, 10, f'Amamentação: {infantil.iloc[0]["amamentacao"]}')
-        pdf.multi_cell(0, 10, f'Introdução Alimentar: {infantil.iloc[0]["introducao_alimentar"]}')
-        pdf.multi_cell(0, 10, f'Objetivo: {infantil.iloc[0]["objetivo_infantil"]}')
-        
-        # IA Infantil
-        sug_inf = []
-        obj_i = str(infantil.iloc[0]["objetivo_infantil"]).lower()
-        
-        if 'introdução' in obj_i or 'comer' in obj_i or 'alimento' in obj_i:
-            sug_inf.append("- [IA Infantil] Estímulo sensorial: variedade de cores e texturas naturais.")
-        elif 'crescer' in obj_i or 'peso' in obj_i:
-            sug_inf.append("- [IA Infantil] Atenção ao aporte de micronutrientes e gorduras saudáveis.")
-        else:
-            sug_inf.append("- [IA Infantil] Fomentar hábitos saudáveis e variedade alimentar lúdica.")
+        # Brain da IA Esportiva
+        relato_ia = f"RELATO IA: Para a modalidade {esp}, identificamos uma demanda bioenergética específica. "
+        if 'hipertrofia' in str(obj).lower() or 'massa' in str(obj).lower() or 'músculo' in str(obj).lower():
+            calc_prot = p_peso * 2.2 if p_peso > 0 else 150
+            relato_ia += f"Para maximizar a hipertrofia muscular, o laudo projeta um superávit calórico progressivo. Sugere-se aporte proteico central de 2.2g/kg (aprox. {calc_prot:.1f}g/dia), fracionado para manter a síntese proteica elevada. "
+            if 'creatina' not in str(sup).lower():
+                relato_ia += "Considerando o perfil de força, a suplementação com Creatina Monoidratada (3-5g/dia) deve ser avaliada para otimizar os estoques de fosfocreatina. "
+        if 'performance' in str(obj).lower() or 'rendimento' in str(obj).lower() or 'treino' in str(obj).lower():
+            relato_ia += "A estratégia deve incluir periodização de carboidratos, ajustando o volume conforme a depleção de glicogênio nas sessões de alta intensidade."
+        relato_ia += "A recuperação tecidual será otimizada via balanço nitrogenado positivo constante."
 
-        pdf.set_font('helvetica', 'I', 10)
-        pdf.set_text_color(150, 40, 40)
-        for s in sug_inf:
-            pdf.multi_cell(0, 7, s)
-        pdf.set_text_color(0, 0, 0)
-        pdf.set_font('helvetica', '', 12)
+        imprimir_relato_ia("ANÁLISE DE PERFORMANCE ESPORTIVA IA", relato_ia, (230, 255, 230))
+
+    elif modulo_alvo == "Infantil":
+        gest = dados_modulo.get('gestacao', '')
+        amam = dados_modulo.get('amamentacao', '')
+        intr = dados_modulo.get('introducao', '')
+        obj = dados_modulo.get('objetivo', '')
+
+        pdf.set_font('helvetica', 'B', 12)
+        pdf.cell(0, 8, 'Desenvolvimento Pediátrico:', 0, 1)
+        pdf.set_font('helvetica', '', 11)
+        pdf.multi_cell(0, 7, f"Contexto: {gest}. Amamentação: {amam}. Introdução Alimentar: {intr}. Objetivo: {obj}.")
         pdf.ln(5)
+
+        # Brain da IA Infantil
+        relato_ia = f"RELATO IA: A janela de desenvolvimento pediátrico para {paciente.get('nome','a criança')} exige atenção à plasticidade sensorial. "
+        if 'introdução' in str(intr).lower() or 'comer' in str(obj).lower():
+            relato_ia += "Sugerimos a técnica de exposição repetida e variada a alimentos 'in natura'. O foco deve ser a exploração de texturas, cores e sabores para consolidar um paladar saudável e prevenir a neofobia alimentar. "
+        relato_ia += "Deve-se garantir o aporte de ácidos graxos essenciais (ômega-3) e ferro heme, fundamentais para a mielinização neural e desenvolvimento cognitivo. A amamentação deve ser incentivada conforme a diretriz vigente."
+
+        imprimir_relato_ia("PARECER PEDIÁTRICO DE IA", relato_ia, (255, 240, 240))
 
     return bytes(pdf.output())
 
@@ -272,6 +275,13 @@ def main():
             background-color: #218838;
             transform: scale(1.05);
         }
+        .report-section {
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid #e0e0e0;
+            margin-bottom: 20px;
+        }
         </style>
     """, unsafe_allow_html=True)
 
@@ -279,7 +289,7 @@ def main():
         st.sidebar.image("logo.png", use_container_width=True)
     
     st.sidebar.title("Desenvolverdura Pro")
-    opcao = st.sidebar.radio("Navegação Principal", ["Cadastrar Paciente", "Módulo Clínico", "Módulo Esportivo", "Módulo Infantil", "Gerenciar Pacientes"])
+    opcao = st.sidebar.radio("Navegação Principal", ["Cadastrar Paciente", "Módulo Clínico", "Módulo Esportivo", "Módulo Infantil", "Base de Pacientes"])
     
     if opcao == "Cadastrar Paciente":
         st.title("📄 Novo Registro")
@@ -304,8 +314,8 @@ def main():
                 else:
                     st.error("O campo Nome é obrigatório.")
                     
-    elif opcao == "Gerenciar Pacientes":
-        st.title("📋 Base de Pacientes")
+    elif opcao == "Base de Pacientes":
+        st.title("📋 Gerenciamento de Dados")
         
         if st.button("🧹 Limpar Pacientes Duplicados"):
             qtd = remover_duplicatas()
@@ -318,19 +328,11 @@ def main():
         if not pacientes.empty:
             for _, row in pacientes.iterrows():
                 with st.container(border=True):
-                    c1, c2, c3 = st.columns([3, 1, 1])
+                    c1, c2 = st.columns([4, 1])
                     c1.subheader(f"{row['nome']}")
-                    c1.write(f"ID: {row['id']} | IMC: {row['imc']:.2f}")
-                    
-                    if c2.button(f"📥 Relatório", key=f"rel_{row['id']}"):
-                        p, cl, es, inf = obter_dados_relatorio(row['id'])
-                        try:
-                            pdf_bytes = gerar_pdf(p, cl, es, inf)
-                            st.download_button(label="Baixar Agora", data=pdf_bytes, file_name=f"relatorio_{row['nome']}.pdf", mime="application/pdf")
-                        except Exception as e:
-                            st.error(f"Erro ao gerar PDF: {e}")
-                        
-                    if c3.button(f"🗑️ Excluir", key=f"excluir_{row['id']}"):
+                    c1.write(f"ID: {row['id']} | Idade: {row['idade']} | IMC: {row['imc']:.2f}")
+                                            
+                    if c2.button(f"🗑️ Excluir", key=f"excluir_{row['id']}"):
                         excluir_paciente(row['id'])
                         st.warning("Registro removido.")
                         st.rerun()
@@ -346,68 +348,92 @@ def main():
             
             if paciente_selecionado != "-- Selecione --":
                 pid = pacientes[pacientes['nome'] == paciente_selecionado]['id'].values[0]
+                p_atual, c_atual, e_atual, i_atual = obter_dados_relatorio(pid)
                 st.divider()
                 
                 if "Clínico" in opcao:
-                    st.title("🏥 Anamnese Clínica")
-                    # Tentar carregar dados existentes
-                    conexao = sqlite3.connect('nutricao.db')
-                    dados_existentes = pd.read_sql_query(f'SELECT * FROM clinica WHERE paciente_id = {pid}', conexao)
-                    conexao.close()
-                    
-                    hist_padrao = dados_existentes.iloc[0]['historico_doencas'] if not dados_existentes.empty else ""
-                    aler_padrao = dados_existentes.iloc[0]['alergias'] if not dados_existentes.empty else ""
-                    meds_padrao = dados_existentes.iloc[0]['medicamentos'] if not dados_existentes.empty else ""
-                    obj_padrao = dados_existentes.iloc[0]['objetivo_clinico'] if not dados_existentes.empty else ""
+                    st.title("🏥 Atendimento Clínico")
+                    hist_val = c_atual.iloc[0]['historico_doencas'] if not c_atual.empty else ""
+                    aler_val = c_atual.iloc[0]['alergias'] if not c_atual.empty else ""
+                    meds_val = c_atual.iloc[0]['medicamentos'] if not c_atual.empty else ""
+                    obj_val = c_atual.iloc[0]['objetivo_clinico'] if not c_atual.empty else ""
 
-                    historico = st.text_area("Histórico Clínico e Doenças Preexistentes", value=hist_padrao)
-                    alergias = st.text_area("Alergias ou Intolerâncias Alimentares", value=aler_padrao)
-                    medicamentos = st.text_area("Medicamentos e Fármacos em Uso", value=meds_padrao)
-                    objetivo = st.text_area("Objetivo da Intervenção Clínica", value=obj_padrao)
-                    if st.button("Gravar Avaliação Clínica"):
+                    historico = st.text_area("Histórico Clínico", value=hist_val)
+                    alergias = st.text_area("Alergias", value=aler_val)
+                    medicamentos = st.text_area("Medicamentos", value=meds_val)
+                    objetivo = st.text_area("Objetivo Clínico", value=obj_val)
+                    
+                    dados_form = {'historico': historico, 'alergias': alergias, 'medicamentos': medicamentos, 'objetivo': objetivo}
+                    
+                    col_btn1, col_btn2 = st.columns(2)
+                    if col_btn1.button("💾 Gravar Dados"):
                         salvar_clinica(pid, historico, alergias, medicamentos, objetivo)
-                        st.success("Dados clínicos atualizados!")
+                        st.success("Dados salvos e sincronizados!")
+                        st.rerun()
+                    
+                    # Relatório IA em Tempo Real
+                    try:
+                        paciente_dict = p_atual.to_dict('records')[0]
+                        pdf_bytes = gerar_pdf(paciente_dict, dados_form, "Clínico")
+                        col_btn2.download_button("📥 Gerar Relato IA (PDF)", data=pdf_bytes, file_name=f"relato_clinico_{paciente_selecionado}.pdf", mime="application/pdf")
+                    except Exception as e:
+                        st.error(f"Erro ao preparar laudo: {e}")
                         
                 elif "Esportivo" in opcao:
-                    st.title("🏋️ Anamnese Esportiva")
-                    # Tentar carregar dados existentes
-                    conexao = sqlite3.connect('nutricao.db')
-                    dados_existentes = pd.read_sql_query(f'SELECT * FROM esportiva WHERE paciente_id = {pid}', conexao)
-                    conexao.close()
-                    
-                    esp_padrao = dados_existentes.iloc[0]['esporte'] if not dados_existentes.empty else ""
-                    freq_padrao = dados_existentes.iloc[0]['frequencia'] if not dados_existentes.empty else ""
-                    sup_padrao = dados_existentes.iloc[0]['suplementos'] if not dados_existentes.empty else ""
-                    obj_padrao = dados_existentes.iloc[0]['objetivo_esportivo'] if not dados_existentes.empty else ""
+                    st.title("🏋️ Atendimento Esportivo")
+                    esp_val = e_atual.iloc[0]['esporte'] if not e_atual.empty else ""
+                    freq_val = e_atual.iloc[0]['frequencia'] if not e_atual.empty else ""
+                    sup_val = e_atual.iloc[0]['suplementos'] if not e_atual.empty else ""
+                    obj_val = e_atual.iloc[0]['objetivo_esportivo'] if not e_atual.empty else ""
 
-                    esporte = st.text_input("Modalidade Praticada", value=esp_padrao)
-                    frequencia = st.text_input("Intensidade/Frequência Semanal", value=freq_padrao)
-                    suplementos = st.text_area("Suplementação Utilizada", value=sup_padrao)
-                    objetivo = st.text_area("Objetivo de Performance/Estético", value=obj_padrao)
-                    if st.button("Gravar Avaliação Esportiva"):
+                    esporte = st.text_input("Modalidade", value=esp_val)
+                    frequencia = st.text_input("Frequência", value=freq_val)
+                    suplementos = st.text_area("Suplementação", value=sup_val)
+                    objetivo = st.text_area("Objetivo Esportivo", value=obj_val)
+                    
+                    dados_form = {'esporte': esporte, 'frequencia': frequencia, 'suplementos': suplementos, 'objetivo': objetivo}
+                    
+                    col_btn1, col_btn2 = st.columns(2)
+                    if col_btn1.button("💾 Gravar Dados"):
                         salvar_esportiva(pid, esporte, frequencia, suplementos, objetivo)
-                        st.success("Dados esportivos atualizados!")
+                        st.success("Performance gravada!")
+                        st.rerun()
+                    
+                    # Relatório IA em Tempo Real
+                    try:
+                        paciente_dict = p_atual.to_dict('records')[0]
+                        pdf_bytes = gerar_pdf(paciente_dict, dados_form, "Esportivo")
+                        col_btn2.download_button("📥 Gerar Relato IA (PDF)", data=pdf_bytes, file_name=f"relato_esportivo_{paciente_selecionado}.pdf", mime="application/pdf")
+                    except Exception as e:
+                        st.error(f"Erro ao preparar laudo: {e}")
                         
                 elif "Infantil" in opcao:
-                    st.title("👶 Anamnese Pediátrica")
-                    # Tentar carregar dados existentes
-                    conexao = sqlite3.connect('nutricao.db')
-                    dados_existentes = pd.read_sql_query(f'SELECT * FROM infantil WHERE paciente_id = {pid}', conexao)
-                    conexao.close()
-                    
-                    gest_padrao = dados_existentes.iloc[0]['idade_gestacional'] if not dados_existentes.empty else ""
-                    amam_padrao = dados_existentes.iloc[0]['amamentacao'] if not dados_existentes.empty else ""
-                    intr_padrao = dados_existentes.iloc[0]['introducao_alimentar'] if not dados_existentes.empty else ""
-                    obj_padrao = dados_existentes.iloc[0]['objetivo_infantil'] if not dados_existentes.empty else ""
+                    st.title("👶 Atendimento Pediátrico")
+                    gest_val = i_atual.iloc[0]['idade_gestacional'] if not i_atual.empty else ""
+                    amam_val = i_atual.iloc[0]['amamentacao'] if not i_atual.empty else ""
+                    intr_val = i_atual.iloc[0]['introducao_alimentar'] if not i_atual.empty else ""
+                    obj_val = i_atual.iloc[0]['objetivo_infantil'] if not i_atual.empty else ""
 
-                    gestacao = st.text_input("Histórico Gestacional e Nascimento", value=gest_padrao)
-                    amamentacao = st.text_input("Tempo de Amamentação", value=amam_padrao)
-                    introducao = st.text_area("Histórico de Introdução Alimentar", value=intr_padrao)
-                    objetivo = st.text_area("Objetivo Nutricional Infantil", value=obj_padrao)
-                    if st.button("Gravar Avaliação Pediátrica"):
+                    gestacao = st.text_input("Gestação", value=gest_val)
+                    amamentacao = st.text_input("Amamentação", value=amam_val)
+                    introducao = st.text_area("Introdução Alimentar", value=intr_val)
+                    objetivo = st.text_area("Objetivo Pediátrico", value=obj_val)
+                    
+                    dados_form = {'gestacao': gestacao, 'amamentacao': amamentacao, 'introducao': introducao, 'objetivo': objetivo}
+                    
+                    col_btn1, col_btn2 = st.columns(2)
+                    if col_btn1.button("💾 Gravar Dados"):
                         salvar_infantil(pid, gestacao, amamentacao, introducao, objetivo)
-                        st.success("Dados pediátricos atualizados!")
+                        st.success("Dados infantis salvos!")
+                        st.rerun()
+                    
+                    # Relatório IA em Tempo Real
+                    try:
+                        paciente_dict = p_atual.to_dict('records')[0]
+                        pdf_bytes = gerar_pdf(paciente_dict, dados_form, "Infantil")
+                        col_btn2.download_button("📥 Gerar Relato IA (PDF)", data=pdf_bytes, file_name=f"relato_infantil_{paciente_selecionado}.pdf", mime="application/pdf")
+                    except Exception as e:
+                        st.error(f"Erro ao preparar laudo: {e}")
 
 if __name__ == "__main__":
     main()
-
