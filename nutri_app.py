@@ -50,8 +50,8 @@ def inicializar_banco():
     CREATE TABLE IF NOT EXISTS infantil (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         paciente_id INTEGER,
-        idade_gestacional TEXT,
-        amamentacao TEXT,
+        dados_nascimento TEXT,
+        rotina_crianca TEXT,
         introducao_alimentar TEXT,
         objetivo_infantil TEXT,
         FOREIGN KEY (paciente_id) REFERENCES pacientes (id)
@@ -121,12 +121,12 @@ def salvar_esportiva(paciente_id, esporte, frequencia, suplementos, objetivo):
     conexao.commit()
     conexao.close()
 
-def salvar_infantil(paciente_id, gestacao, amamentacao, introducao, objetivo):
+def salvar_infantil(paciente_id, nascimento, rotina, introducao, objetivo):
     conexao = sqlite3.connect('nutricao.db')
     cursor = conexao.cursor()
     cursor.execute('DELETE FROM infantil WHERE paciente_id = ?', (paciente_id,))
-    cursor.execute('INSERT INTO infantil (paciente_id, idade_gestacional, amamentacao, introducao_alimentar, objetivo_infantil) VALUES (?, ?, ?, ?, ?)',
-                   (paciente_id, gestacao, amamentacao, introducao, objetivo))
+    cursor.execute('INSERT INTO infantil (paciente_id, dados_nascimento, rotina_crianca, introducao_alimentar, objetivo_infantil) VALUES (?, ?, ?, ?, ?)',
+                   (paciente_id, nascimento, rotina, introducao, objetivo))
     conexao.commit()
     conexao.close()
 
@@ -324,11 +324,11 @@ def gerar_pdf(paciente, dados_modulo, modulo_alvo):
             linha.cell("IDENTIFICACAO PEDIATRICA", colspan=2, align='C', style=FontFace(emphasis="BOLD"))
             
             linha = tabela.row()
-            linha.cell("Gestacao:")
+            linha.cell("Nascimento:")
             linha.cell(gest)
             
             linha = tabela.row()
-            linha.cell("Amamentacao:")
+            linha.cell("Rotina:")
             linha.cell(amam)
             
             linha = tabela.row()
@@ -561,21 +561,21 @@ def executar_principal():
                         
                 elif "Infantil" in opcao:
                     st.title("👶 Atendimento Pediátrico")
-                    gest_val = i_atual.iloc[0]['idade_gestacional'] if not i_atual.empty else ""
-                    amam_val = i_atual.iloc[0]['amamentacao'] if not i_atual.empty else ""
+                    nasc_val = i_atual.iloc[0]['dados_nascimento'] if not i_atual.empty else ""
+                    rot_val = i_atual.iloc[0]['rotina_crianca'] if not i_atual.empty else ""
                     intr_val = i_atual.iloc[0]['introducao_alimentar'] if not i_atual.empty else ""
                     obj_val = i_atual.iloc[0]['objetivo_infantil'] if not i_atual.empty else ""
 
-                    gestacao = st.text_input("Gestação", value=gest_val)
-                    amamentacao = st.text_input("Amamentação", value=amam_val)
+                    nascimento = st.text_input("Dados do Nascimento", value=nasc_val)
+                    rotina = st.text_input("Rotina da Criança", value=rot_val)
                     introducao = st.text_area("Introdução Alimentar", value=intr_val)
                     objetivo = st.text_area("Objetivo Pediátrico", value=obj_val)
                     
-                    dados_form = {'gestacao': gestacao, 'amamentacao': amamentacao, 'introducao': introducao, 'objetivo': objetivo}
+                    dados_form = {'gestacao': nascimento, 'amamentacao': rotina, 'introducao': introducao, 'objetivo': objetivo}
                     
                     col_btn1, col_btn2 = st.columns(2)
                     if col_btn1.button("💾 Gravar Dados"):
-                        salvar_infantil(pid, gestacao, amamentacao, introducao, objetivo)
+                        salvar_infantil(pid, nascimento, rotina, introducao, objetivo)
                         st.success("Dados infantis salvos!")
                         st.rerun()
                     
