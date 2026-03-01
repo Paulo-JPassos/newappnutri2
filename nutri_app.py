@@ -184,12 +184,33 @@ def gerar_pdf(paciente, dados_modulo, modulo_alvo):
     p_idade = int(paciente.get('idade', 0)) if paciente.get('idade') else 0
     clas_imc = classificar_imc(p_imc, p_idade)
 
-    pdf.set_fill_color(235, 245, 235)
-    pdf.set_font('helvetica', 'B', 12)
-    pdf.cell(pdf.epw, 10, f' Paciente: {paciente.get("nome", "N/A")}', 0, 1, 'L', True)
-    pdf.set_font('helvetica', '', 11)
-    pdf.cell(pdf.epw, 8, f'  Ficha: #{paciente.get("id", "0")} | Idade: {paciente.get("idade", "0")} anos | Sexo: {paciente.get("sexo", "N/A")}', 0, 1)
-    pdf.cell(pdf.epw, 8, f'  Antropometria: {p_peso}kg | {p_altura}m | IMC: {p_imc:.2f} ({clas_imc})', 0, 1)
+    pdf.set_font('helvetica', 'B', 11)
+    with pdf.table(borders_layout="SINGLE_TOP_LINE", cell_fill_color=(235, 245, 235), cell_fill_mode="ROWS") as tabela:
+        linha = tabela.row()
+        linha.cell("IDENTIFICAÇÃO DO PACIENTE", colspan=2, align='C', style='B')
+        
+        linha = tabela.row()
+        linha.cell(f"Nome: {paciente.get('nome', 'N/A')}")
+        linha.cell(f"Ficha: #{paciente.get('id', '0')}")
+        
+        linha = tabela.row()
+        linha.cell(f"Idade: {p_idade} anos")
+        linha.cell(f"Sexo: {paciente.get('sexo', 'N/A')}")
+
+    pdf.ln(5)
+
+    with pdf.table(borders_layout="SINGLE_TOP_LINE", cell_fill_color=(245, 245, 245), cell_fill_mode="ROWS") as tabela:
+        linha = tabela.row()
+        linha.cell("DADOS ANTROPOMÉTRICOS", colspan=2, align='C', style='B')
+        
+        linha = tabela.row()
+        linha.cell(f"Peso Atual: {p_peso} kg")
+        linha.cell(f"Altura: {p_altura} m")
+        
+        linha = tabela.row()
+        linha.cell(f"IMC: {p_imc:.2f}")
+        linha.cell(f"Status: {clas_imc}")
+
     pdf.ln(5)
 
     def imprimir_relato_ia(titulo, relato, cor_box):
@@ -206,13 +227,26 @@ def gerar_pdf(paciente, dados_modulo, modulo_alvo):
         meds = dados_modulo.get('medicamentos', '')
         obj = dados_modulo.get('objetivo', '')
 
-        pdf.set_font('helvetica', 'B', 12)
-        pdf.cell(pdf.epw, 8, 'Contexto Clínico Inicial:', 0, 1)
-        pdf.set_font('helvetica', '', 11)
-        pdf.multi_cell(pdf.epw, 7, f"- Histórico: {hist}")
-        pdf.multi_cell(pdf.epw, 7, f"- Medicamentos: {meds}")
-        pdf.multi_cell(pdf.epw, 7, f"- Alergias/Aversões: {aler}")
-        pdf.multi_cell(pdf.epw, 7, f"- Objetivo Principal: {obj}")
+        with pdf.table(borders_layout="HORIZONTAL_LINES", cell_fill_color=(250, 250, 250), cell_fill_mode="ROWS") as tabela:
+            linha = tabela.row()
+            linha.cell("CONTEXTO CLÍNICO", colspan=2, align='C', style='B')
+            
+            linha = tabela.row()
+            linha.cell("Histórico:")
+            linha.cell(hist)
+            
+            linha = tabela.row()
+            linha.cell("Medicamentos:")
+            linha.cell(meds)
+            
+            linha = tabela.row()
+            linha.cell("Alergias:")
+            linha.cell(aler)
+            
+            linha = tabela.row()
+            linha.cell("Objetivo:")
+            linha.cell(obj)
+        
         pdf.ln(5)
 
         relato_ia = f"RELATO IA: Após análise sistêmica do perfil clínico de {paciente.get('nome','o paciente')}, observamos que a queixa principal ({obj}) exige uma manobra dietoterápica focada na homeostase metabólica. "
@@ -243,13 +277,26 @@ def gerar_pdf(paciente, dados_modulo, modulo_alvo):
         sup = dados_modulo.get('suplementos', '')
         obj = dados_modulo.get('objetivo', '')
 
-        pdf.set_font('helvetica', 'B', 12)
-        pdf.cell(pdf.epw, 8, 'Performance e Atividade Fisica:', 0, 1)
-        pdf.set_font('helvetica', '', 11)
-        pdf.multi_cell(pdf.epw, 7, f"- Modalidade: {esp}")
-        pdf.multi_cell(pdf.epw, 7, f"- Frequencia: {freq}")
-        pdf.multi_cell(pdf.epw, 7, f"- Suplementos: {sup}")
-        pdf.multi_cell(pdf.epw, 7, f"- Objetivo: {obj}")
+        with pdf.table(borders_layout="HORIZONTAL_LINES", cell_fill_color=(250, 250, 250), cell_fill_mode="ROWS") as tabela:
+            linha = tabela.row()
+            linha.cell("CONTEXTO ESPORTIVO", colspan=2, align='C', style='B')
+            
+            linha = tabela.row()
+            linha.cell("Modalidade:")
+            linha.cell(esp)
+            
+            linha = tabela.row()
+            linha.cell("Frequencia:")
+            linha.cell(freq)
+            
+            linha = tabela.row()
+            linha.cell("Suplementos:")
+            linha.cell(sup)
+            
+            linha = tabela.row()
+            linha.cell("Objetivo:")
+            linha.cell(obj)
+        
         pdf.ln(5)
 
         relato_ia = f"RELATO IA: Para a modalidade {esp}, identificamos uma demanda bioenergetica especifica. "
@@ -272,13 +319,26 @@ def gerar_pdf(paciente, dados_modulo, modulo_alvo):
         intr = dados_modulo.get('introducao', '')
         obj = dados_modulo.get('objetivo', '')
 
-        pdf.set_font('helvetica', 'B', 12)
-        pdf.cell(pdf.epw, 8, 'Desenvolvimento Pediatrico:', 0, 1)
-        pdf.set_font('helvetica', '', 11)
-        pdf.multi_cell(pdf.epw, 7, f"- Gestacao/Nascimento: {gest}")
-        pdf.multi_cell(pdf.epw, 7, f"- Amamentacao: {amam}")
-        pdf.multi_cell(pdf.epw, 7, f"- Introducao Alimentar: {intr}")
-        pdf.multi_cell(pdf.epw, 7, f"- Objetivo: {obj}")
+        with pdf.table(borders_layout="HORIZONTAL_LINES", cell_fill_color=(250, 250, 250), cell_fill_mode="ROWS") as tabela:
+            linha = tabela.row()
+            linha.cell("CONTEXTO PEDIÁTRICO", colspan=2, align='C', style='B')
+            
+            linha = tabela.row()
+            linha.cell("Gestacao:")
+            linha.cell(gest)
+            
+            linha = tabela.row()
+            linha.cell("Amamentacao:")
+            linha.cell(amam)
+            
+            linha = tabela.row()
+            linha.cell("Introducao:")
+            linha.cell(intr)
+            
+            linha = tabela.row()
+            linha.cell("Objetivo:")
+            linha.cell(obj)
+        
         pdf.ln(5)
 
         relato_ia = f"RELATO IA: A janela de desenvolvimento pediatrico exige atencao a plasticidade sensorial. "
