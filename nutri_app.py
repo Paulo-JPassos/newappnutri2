@@ -169,10 +169,9 @@ def gerar_pdf(paciente, dados_modulo, modulo_alvo):
     pdf.add_page()
     pdf.set_font('helvetica', '', 12)
     
-    pdf.set_fill_color(0, 100, 0) 
-    pdf.set_text_color(255, 255, 255)
-    pdf.cell(pdf.epw, 12, 'PARECER TÉCNICO NUTRICIONAL - DESENVOLVERDURA IA', 0, 1, 'C', 1)
+    pdf.set_fill_color(144, 238, 144) 
     pdf.set_text_color(0, 0, 0)
+    pdf.cell(pdf.epw, 12, 'PARECER TÉCNICO NUTRICIONAL - DESENVOLVERDURA IA', 0, 1, 'C', 1)
     pdf.ln(5)
 
     try:
