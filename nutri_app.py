@@ -421,6 +421,29 @@ def executar_principal():
                 pid = pacientes[pacientes['nome'] == paciente_selecionado]['id'].values[0]
                 p_atual, c_atual, e_atual, i_atual = obter_dados_relatorio(pid)
                 st.divider()
+
+                dados_paciente = p_atual.iloc[0]
+                status_atual = classificar_imc(dados_paciente['imc'], dados_paciente['idade'])
+                
+                col_res1, col_res2 = st.columns(2)
+                
+                with col_res1:
+                    st.subheader("👤 Identificação")
+                    tabela_id = pd.DataFrame({
+                        "Campo": ["Paciente", "Ficha", "Idade", "Sexo"],
+                        "Valor": [dados_paciente['nome'], f"#{dados_paciente['id']}", f"{dados_paciente['idade']} anos", dados_paciente['sexo']]
+                    })
+                    st.table(tabela_id)
+
+                with col_res2:
+                    st.subheader("⚖️ Antropometria")
+                    tabela_antropometria = pd.DataFrame({
+                        "Medida": ["Peso Atual", "Altura", "IMC", "Status"],
+                        "Valor": [f"{dados_paciente['peso']} kg", f"{dados_paciente['altura']} m", f"{dados_paciente['imc']:.2f}", status_atual]
+                    })
+                    st.table(tabela_antropometria)
+                
+                st.divider()
                 
                 if "Clínico" in opcao:
                     st.title("🏥 Atendimento Clínico")
