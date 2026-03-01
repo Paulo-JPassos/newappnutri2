@@ -2,6 +2,7 @@ import streamlit as st
 import sqlite3
 import pandas as pd
 from fpdf import FPDF
+from fpdf.fonts import FontFace
 import datetime
 import os
 
@@ -187,7 +188,7 @@ def gerar_pdf(paciente, dados_modulo, modulo_alvo):
     pdf.set_font('helvetica', 'B', 11)
     with pdf.table(borders_layout="SINGLE_TOP_LINE", cell_fill_color=(235, 245, 235), cell_fill_mode="ROWS") as tabela:
         linha = tabela.row()
-        linha.cell("IDENTIFICAÇÃO DO PACIENTE", colspan=2, align='C', style='B')
+        linha.cell("IDENTIFICAÇÃO DO PACIENTE", colspan=2, align='C', style=FontFace(emphasis="BOLD"))
         
         linha = tabela.row()
         linha.cell(f"Nome: {paciente.get('nome', 'N/A')}")
@@ -201,7 +202,7 @@ def gerar_pdf(paciente, dados_modulo, modulo_alvo):
 
     with pdf.table(borders_layout="SINGLE_TOP_LINE", cell_fill_color=(245, 245, 245), cell_fill_mode="ROWS") as tabela:
         linha = tabela.row()
-        linha.cell("DADOS ANTROPOMÉTRICOS", colspan=2, align='C', style='B')
+        linha.cell("DADOS ANTROPOMÉTRICOS", colspan=2, align='C', style=FontFace(emphasis="BOLD"))
         
         linha = tabela.row()
         linha.cell(f"Peso Atual: {p_peso} kg")
@@ -229,7 +230,7 @@ def gerar_pdf(paciente, dados_modulo, modulo_alvo):
 
         with pdf.table(borders_layout="HORIZONTAL_LINES", cell_fill_color=(250, 250, 250), cell_fill_mode="ROWS") as tabela:
             linha = tabela.row()
-            linha.cell("CONTEXTO CLÍNICO", colspan=2, align='C', style='B')
+            linha.cell("IDENTIFICACAO CLINICA", colspan=2, align='C', style=FontFace(emphasis="BOLD"))
             
             linha = tabela.row()
             linha.cell("Histórico:")
@@ -279,7 +280,7 @@ def gerar_pdf(paciente, dados_modulo, modulo_alvo):
 
         with pdf.table(borders_layout="HORIZONTAL_LINES", cell_fill_color=(250, 250, 250), cell_fill_mode="ROWS") as tabela:
             linha = tabela.row()
-            linha.cell("CONTEXTO ESPORTIVO", colspan=2, align='C', style='B')
+            linha.cell("IDENTIFICACAO ESPORTIVA", colspan=2, align='C', style=FontFace(emphasis="BOLD"))
             
             linha = tabela.row()
             linha.cell("Modalidade:")
@@ -321,7 +322,7 @@ def gerar_pdf(paciente, dados_modulo, modulo_alvo):
 
         with pdf.table(borders_layout="HORIZONTAL_LINES", cell_fill_color=(250, 250, 250), cell_fill_mode="ROWS") as tabela:
             linha = tabela.row()
-            linha.cell("CONTEXTO PEDIÁTRICO", colspan=2, align='C', style='B')
+            linha.cell("IDENTIFICACAO PEDIATRICA", colspan=2, align='C', style=FontFace(emphasis="BOLD"))
             
             linha = tabela.row()
             linha.cell("Gestacao:")
