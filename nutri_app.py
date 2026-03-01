@@ -60,20 +60,37 @@ def inicializar_banco():
     conexao.commit()
     conexao.close()
 
-def classificar_imc(imc):
+def classificar_imc(imc, idade):
     if imc <= 0:
         return "Não Informado"
-    if imc < 18.5:
-        return "Abaixo do peso"
+    
+    if idade >= 60:
+        if imc < 22:
+            return "Baixo peso (Idoso)"
+        if imc <= 27:
+            return "Eutrofia (Peso ideal - Idoso)"
+        return "Sobrepeso (Idoso)"
+    
+    if idade >= 20:
+        if imc < 18.5:
+            return "Abaixo do peso"
+        if imc < 25:
+            return "Peso normal (Eutrofia)"
+        if imc < 30:
+            return "Sobrepeso"
+        if imc < 35:
+            return "Obesidade Grau I"
+        if imc < 40:
+            return "Obesidade Grau II"
+        return "Obesidade Grau III (Mórbida)"
+    
+    if imc < 15:
+        return "Abaixo do peso (Pediátrico)"
+    if imc < 23:
+        return "Peso adequado (Pediátrico)"
     if imc < 25:
-        return "Peso normal"
-    if imc < 30:
-        return "Sobrepeso"
-    if imc < 35:
-        return "Obesidade Grau I"
-    if imc < 40:
-        return "Obesidade Grau II"
-    return "Obesidade Grau III (Mórbida)"
+        return "Sobrepeso (Pediátrico)"
+    return "Obesidade (Pediátrico)"
 
 def salvar_paciente(nome, idade, sexo, peso, altura, imc):
     conexao = sqlite3.connect('nutricao.db')
@@ -153,7 +170,7 @@ def gerar_pdf(paciente, dados_modulo, modulo_alvo):
     
     pdf.set_fill_color(0, 100, 0) 
     pdf.set_text_color(255, 255, 255)
-    pdf.cell(0, 12, f'PARECER TÉCNICO NUTRICIONAL - DESENVOLVERDURA IA', 0, 1, 'C', 1)
+    pdf.cell(pdf.epw, 12, 'PARECER TÉCNICO NUTRICIONAL - DESENVOLVERDURA IA', 0, 1, 'C', 1)
     pdf.set_text_color(0, 0, 0)
     pdf.ln(5)
 
@@ -164,22 +181,23 @@ def gerar_pdf(paciente, dados_modulo, modulo_alvo):
     except:
         p_peso, p_altura, p_imc = 0.0, 0.0, 0.0
 
-    clas_imc = classificar_imc(p_imc)
+    p_idade = int(paciente.get('idade', 0)) if paciente.get('idade') else 0
+    clas_imc = classificar_imc(p_imc, p_idade)
 
     pdf.set_fill_color(235, 245, 235)
     pdf.set_font('helvetica', 'B', 12)
-    pdf.cell(0, 10, f' Paciente: {paciente.get("nome", "N/A")}', 0, 1, 'L', True)
+    pdf.cell(pdf.epw, 10, f' Paciente: {paciente.get("nome", "N/A")}', 0, 1, 'L', True)
     pdf.set_font('helvetica', '', 11)
-    pdf.cell(0, 8, f'  Ficha: #{paciente.get("id", "0")} | Idade: {paciente.get("idade", "0")} anos | Sexo: {paciente.get("sexo", "N/A")}', 0, 1)
-    pdf.cell(0, 8, f'  Antropometria: {p_peso}kg | {p_altura}m | IMC: {p_imc:.2f} ({clas_imc})', 0, 1)
+    pdf.cell(pdf.epw, 8, f'  Ficha: #{paciente.get("id", "0")} | Idade: {paciente.get("idade", "0")} anos | Sexo: {paciente.get("sexo", "N/A")}', 0, 1)
+    pdf.cell(pdf.epw, 8, f'  Antropometria: {p_peso}kg | {p_altura}m | IMC: {p_imc:.2f} ({clas_imc})', 0, 1)
     pdf.ln(5)
 
     def imprimir_relato_ia(titulo, relato, cor_box):
         pdf.set_fill_color(*cor_box)
         pdf.set_font('helvetica', 'B', 11)
-        pdf.cell(0, 10, f' {titulo}', 0, 1, 'L', True)
+        pdf.cell(pdf.epw, 10, f' {titulo}', 0, 1, 'L', True)
         pdf.set_font('helvetica', 'I', 10)
-        pdf.multi_cell(0, 7, relato)
+        pdf.multi_cell(pdf.epw, 7, relato)
         pdf.ln(10)
 
     if modulo_alvo == "Clínico":
@@ -189,25 +207,25 @@ def gerar_pdf(paciente, dados_modulo, modulo_alvo):
         obj = dados_modulo.get('objetivo', '')
 
         pdf.set_font('helvetica', 'B', 12)
-        pdf.cell(0, 8, 'Contexto Clínico Inicial:', 0, 1)
+        pdf.cell(pdf.epw, 8, 'Contexto Clínico Inicial:', 0, 1)
         pdf.set_font('helvetica', '', 11)
-        pdf.multi_cell(0, 7, f"- Histórico: {hist}")
-        pdf.multi_cell(0, 7, f"- Medicamentos: {meds}")
-        pdf.multi_cell(0, 7, f"- Alergias/Aversões: {aler}")
-        pdf.multi_cell(0, 7, f"- Objetivo Principal: {obj}")
+        pdf.multi_cell(pdf.epw, 7, f"- Histórico: {hist}")
+        pdf.multi_cell(pdf.epw, 7, f"- Medicamentos: {meds}")
+        pdf.multi_cell(pdf.epw, 7, f"- Alergias/Aversões: {aler}")
+        pdf.multi_cell(pdf.epw, 7, f"- Objetivo Principal: {obj}")
         pdf.ln(5)
 
         relato_ia = f"RELATO IA: Após análise sistêmica do perfil clínico de {paciente.get('nome','o paciente')}, observamos que a queixa principal ({obj}) exige uma manobra dietoterápica focada na homeostase metabólica. "
         
-        sugestao_alimentos = "\n💡 ESTRATÉGIA DE DISTRIBUIÇÃO ALIMENTAR:\n"
+        sugestao_alimentos = "\nESTRATEGIA DE DISTRIBUICAO ALIMENTAR:\n"
         if 'emagrec' in str(obj).lower() or 'peso' in str(obj).lower():
             relato_ia += "Propomos uma estratégia baseada em densidade nutricional elevada com restrição energética moderada. "
-            sugestao_alimentos += "- MANHÃ: Priorizar fibras e proteínas (Ovos, Tubérculos como raiz de mandioca ou cará) para estabilizar a saciedade precoce.\n"
-            sugestao_alimentos += "- ALMOÇO: Vegetais verde-escuros devem compor 50% do prato para controle de densidade calórica.\n"
+            sugestao_alimentos += "- MANHA: Priorizar fibras e proteínas (Ovos, Tubérculos como raiz de mandioca ou cará) para estabilizar a saciedade precoce.\n"
+            sugestao_alimentos += "- ALMOCO: Vegetais verde-escuros devem compor 50% do prato para controle de densidade calórica.\n"
             sugestao_alimentos += "- JANTAR: Carboidratos de baixo índice glicêmico e proteínas leves para evitar picos de insulina noturna."
         elif 'diabetes' in str(obj).lower() or 'glicose' in str(obj).lower() or 'fígado' in str(obj).lower():
             relato_ia += "O quadro exige rigoroso monitoramento do índice glicêmico e suporte hepático. "
-            sugestao_alimentos += "- MANHÃ: Farelo de aveia ou sementes gordurosas (chia/linhaça) associadas a uma fonte proteica.\n"
+            sugestao_alimentos += "- MANHA: Farelo de aveia ou sementes gordurosas (chia/linhaça) associadas a uma fonte proteica.\n"
             sugestao_alimentos += "- TARDE: Frutas de baixo impacto (frutas vermelhas ou abacate).\n"
             sugestao_alimentos += "- JANTAR: Proteínas brancas com legumes cozidos no vapor."
         else:
@@ -217,7 +235,7 @@ def gerar_pdf(paciente, dados_modulo, modulo_alvo):
         calc_agua = p_peso * 35 if p_peso > 0 else 2000
         relato_ia += f"Quanto aos medicamentos ({meds}), manter a ingestão hídrica alvo de {calc_agua:.0f}ml/dia."
         
-        imprimir_relato_ia("ANÁLISE AVANÇADA DE IA CLÍNICA", relato_ia + sugestao_alimentos, (230, 240, 255))
+        imprimir_relato_ia("ANALISE AVANCADA DE IA CLINICA", relato_ia + sugestao_alimentos, (230, 240, 255))
 
     elif modulo_alvo == "Esportivo":
         esp = dados_modulo.get('esporte', '')
@@ -226,27 +244,27 @@ def gerar_pdf(paciente, dados_modulo, modulo_alvo):
         obj = dados_modulo.get('objetivo', '')
 
         pdf.set_font('helvetica', 'B', 12)
-        pdf.cell(0, 8, 'Performance e Atividade Física:', 0, 1)
+        pdf.cell(pdf.epw, 8, 'Performance e Atividade Fisica:', 0, 1)
         pdf.set_font('helvetica', '', 11)
-        pdf.multi_cell(0, 7, f"- Modalidade: {esp}")
-        pdf.multi_cell(0, 7, f"- Frequência: {freq}")
-        pdf.multi_cell(0, 7, f"- Suplementos: {sup}")
-        pdf.multi_cell(0, 7, f"- Objetivo: {obj}")
+        pdf.multi_cell(pdf.epw, 7, f"- Modalidade: {esp}")
+        pdf.multi_cell(pdf.epw, 7, f"- Frequencia: {freq}")
+        pdf.multi_cell(pdf.epw, 7, f"- Suplementos: {sup}")
+        pdf.multi_cell(pdf.epw, 7, f"- Objetivo: {obj}")
         pdf.ln(5)
 
-        relato_ia = f"RELATO IA: Para a modalidade {esp}, identificamos uma demanda bioenergética específica. "
-        sugestao_alimentos = "\n⚡ CRONOGRAMA NUTRICIONAL PARA PERFORMANCE:\n"
+        relato_ia = f"RELATO IA: Para a modalidade {esp}, identificamos uma demanda bioenergetica especifica. "
+        sugestao_alimentos = "\nCRONOGRAMA NUTRICIONAL PARA PERFORMANCE:\n"
         
         if 'hipertrofia' in str(obj).lower() or 'massa' in str(obj).lower():
-            relato_ia += f"Laudo projeta um superávit calórico progressivo para hipertrofia. "
-            sugestao_alimentos += "- PRÉ-TREINO: Carboidratos complexos (Batata doce ou Aveia) 90min antes da atividade.\n"
-            sugestao_alimentos += "- PÓS-TREINO: Proteína de rápida absorção associada a carboidrato simples (Banana com Mel) para ressíntese de glicogênio.\n"
-            sugestao_alimentos += "- CEIA: Proteínas de lenta absorção (Caseína natural ou Ovos) para síntese proteica noturna."
+            relato_ia += "Laudo projeta um superavit calorico progressivo para hipertrofia. "
+            sugestao_alimentos += "- PRE-TREINO: Carboidratos complexos (Batata doce ou Aveia) 90min antes da atividade.\n"
+            sugestao_alimentos += "- POS-TREINO: Proteina de rapida absorcao associada a carboidrato simples (Banana com Mel) para ressintese de glicogenio.\n"
+            sugestao_alimentos += "- CEIA: Proteinas de lenta absorcao (Caseina natural ou Ovos) para sintese proteica noturna."
         else:
-            sugestao_alimentos += "- PRÉ-TREINO: Foco em hidratação e carboidratos de absorção moderada.\n"
-            sugestao_alimentos += "- PÓS-TREINO: Foco em reparação tecidual com aminoácidos essenciais."
+            sugestao_alimentos += "- PRE-TREINO: Foco em hidratacao e carboidratos de absorcao moderada.\n"
+            sugestao_alimentos += "- POS-TREINO: Foco em reparacao tecidual com aminoacidos essenciais."
 
-        imprimir_relato_ia("ANÁLISE DE PERFORMANCE ESPORTIVA IA", relato_ia + sugestao_alimentos, (230, 255, 230))
+        imprimir_relato_ia("ANALISE DE PERFORMANCE ESPORTIVA IA", relato_ia + sugestao_alimentos, (230, 255, 230))
 
     elif modulo_alvo == "Infantil":
         gest = dados_modulo.get('gestacao', '')
@@ -255,21 +273,21 @@ def gerar_pdf(paciente, dados_modulo, modulo_alvo):
         obj = dados_modulo.get('objetivo', '')
 
         pdf.set_font('helvetica', 'B', 12)
-        pdf.cell(0, 8, 'Desenvolvimento Pediátrico:', 0, 1)
+        pdf.cell(pdf.epw, 8, 'Desenvolvimento Pediatrico:', 0, 1)
         pdf.set_font('helvetica', '', 11)
-        pdf.multi_cell(0, 7, f"- Gestação/Nascimento: {gest}")
-        pdf.multi_cell(0, 7, f"- Amamentação: {amam}")
-        pdf.multi_cell(0, 7, f"- Introdução Alimentar: {intr}")
-        pdf.multi_cell(0, 7, f"- Objetivo: {obj}")
+        pdf.multi_cell(pdf.epw, 7, f"- Gestacao/Nascimento: {gest}")
+        pdf.multi_cell(pdf.epw, 7, f"- Amamentacao: {amam}")
+        pdf.multi_cell(pdf.epw, 7, f"- Introducao Alimentar: {intr}")
+        pdf.multi_cell(pdf.epw, 7, f"- Objetivo: {obj}")
         pdf.ln(5)
 
-        relato_ia = f"RELATO IA: A janela de desenvolvimento pediátrico exige atenção à plasticidade sensorial. "
-        sugestao_alimentos = "\n👶 GUIA ALIMENTAR PEDIÁTRICO:\n"
-        sugestao_alimentos += "- MANHÃ/TARDE: Iniciar com frutas in natura cortadas para exploração sensorial.\n"
-        sugestao_alimentos += "- PRINCIPAIS: Proteína amassada ou desfiada associada a uma leguminosa e um tubérculo.\n"
-        sugestao_alimentos += "- CRÍTICO: Evitar ultraprocessados e açúcares adicionados nesta janela de formação do paladar."
+        relato_ia = f"RELATO IA: A janela de desenvolvimento pediatrico exige atencao a plasticidade sensorial. "
+        sugestao_alimentos = "\nGUIA ALIMENTAR PEDIATRICO:\n"
+        sugestao_alimentos += "- MANHA/TARDE: Iniciar com frutas in natura cortadas para exploracao sensorial.\n"
+        sugestao_alimentos += "- PRINCIPAIS: Proteina amassada ou desfiada associada a uma leguminosa e um tuberculo.\n"
+        sugestao_alimentos += "- CRITICO: Evitar ultraprocessados e acucares adicionados nesta janela de formacao do paladar."
 
-        imprimir_relato_ia("PARECER PEDIÁTRICO DE IA", relato_ia + sugestao_alimentos, (255, 240, 240))
+        imprimir_relato_ia("PARECER PEDIATRICO DE IA", relato_ia + sugestao_alimentos, (255, 240, 240))
 
     return bytes(pdf.output())
 
@@ -361,7 +379,7 @@ def executar_principal():
         
         pacientes = listar_pacientes()
         if not pacientes.empty:
-            pacientes['Classificação'] = pacientes['imc'].apply(classificar_imc)
+            pacientes['Classificação'] = pacientes.apply(lambda linha: classificar_imc(linha['imc'], linha['idade']), axis=1)
             pacientes_exibicao = pacientes.rename(columns={
                 'id': 'ID',
                 'nome': 'Nome',
